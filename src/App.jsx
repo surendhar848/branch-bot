@@ -1,27 +1,37 @@
-import { useMemo, useState } from 'react'
-import { generateBranchName, getSegmentBreakdown } from './branchName.js'
+import { useEffect, useMemo, useState } from 'react'
+import { extractKeywords, getBranchSuggestions } from './branchName.js'
 
-const EXAMPLE_TASK = 'Tata Capital PL - Tokenized Link Creation'
+const EXAMPLE_TASK = 'Enhancement: Removal SFL Pincode in the Code'
 
 export default function App() {
   const [username, setUsername] = useState('surendhar')
   const [cardNumber, setCardNumber] = useState('')
   const [task, setTask] = useState('')
+  const [selectedIndex, setSelectedIndex] = useState(0)
   const [copied, setCopied] = useState(false)
 
   const isReady = cardNumber.trim() !== '' && task.trim() !== ''
 
-  const branchName = useMemo(
-    () => generateBranchName({ username, cardNumber, task }),
+  const suggestions = useMemo(
+    () => getBranchSuggestions({ username, cardNumber, task }),
     [username, cardNumber, task],
   )
 
-  const breakdown = useMemo(() => getSegmentBreakdown(task), [task])
+  const keywords = useMemo(() => extractKeywords(task), [task])
+
+  // Whenever the inputs change the candidate list is rebuilt from scratch,
+  // so the previous selection index may no longer point at the same idea.
+  useEffect(() => {
+    setSelectedIndex(0)
+  }, [username, cardNumber, task])
+
+  const safeIndex = Math.min(selectedIndex, suggestions.length - 1)
+  const selected = suggestions[safeIndex]
 
   async function handleCopy() {
     if (!isReady) return
     try {
-      await navigator.clipboard.writeText(branchName)
+      await navigator.clipboard.writeText(selected)
       setCopied(true)
       setTimeout(() => setCopied(false), 1600)
     } catch {
@@ -58,7 +68,7 @@ export default function App() {
             <input
               value={cardNumber}
               onChange={(event) => setCardNumber(event.target.value)}
-              placeholder="12144"
+              placeholder="12344"
               autoComplete="off"
               spellCheck={false}
             />
@@ -76,46 +86,52 @@ export default function App() {
           </label>
 
           <p className="hint">
-            separate a ticket type from its description with <code>-</code>, branch-bot
-            abbreviates each chunk on its own.
+            a leading <code>Type:</code> label is dropped, filler words are skipped, and
+            what's left is kept as real words - not chopped into random letters.
           </p>
         </section>
 
         <section className="panel preview-panel">
-          <span className="label-tag">branch_name</span>
+          <span className="label-tag">pick a branch name</span>
 
-          <div className={`branch-output ${isReady ? '' : 'is-empty'}`}>
-            <span className="branch-text">
-              {isReady ? branchName : 'waiting_for_input...'}
-            </span>
-            <span className="cursor">_</span>
-          </div>
+          {keywords.length > 0 && (
+            <p className="keywords">
+              detected:{' '}
+              {keywords.map((word, index) => (
+                <span key={`${word}-${index}`} className="keyword-chip">
+                  {word}
+                </span>
+              ))}
+            </p>
+          )}
+
+          <ul className="suggestion-list">
+            {isReady ? (
+              suggestions.map((suggestion, index) => (
+                <li key={suggestion}>
+                  <button
+                    type="button"
+                    className={`suggestion ${index === safeIndex ? 'is-selected' : ''}`}
+                    onClick={() => setSelectedIndex(index)}
+                  >
+                    <span className="suggestion-marker">{index === safeIndex ? '◉' : '○'}</span>
+                    <span className="suggestion-text">{suggestion}</span>
+                  </button>
+                </li>
+              ))
+            ) : (
+              <li className="suggestion-empty">waiting_for_input...</li>
+            )}
+          </ul>
 
           <button className="copy-button" onClick={handleCopy} disabled={!isReady}>
-            {copied ? 'copied' : 'copy'}
+            {copied ? 'copied' : 'copy selected'}
           </button>
-
-          <div className="breakdown">
-            <span className="label-tag">breakdown</span>
-            {breakdown.length > 0 ? (
-              <ul>
-                {breakdown.map((entry, index) => (
-                  <li key={`${entry.segment}-${index}`}>
-                    <span className="chip-from">{entry.segment}</span>
-                    <span className="arrow">&rarr;</span>
-                    <span className="chip-to">{entry.abbreviation}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="hint">type a task above to see how each chunk gets shortened.</p>
-            )}
-          </div>
         </section>
       </main>
 
       <footer className="masthead-footer">
-        <span className="prompt">$</span> git checkout -b {isReady ? branchName : '...'}
+        <span className="prompt">$</span> git checkout -b {isReady ? selected : '...'}
       </footer>
     </div>
   )

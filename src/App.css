@@ -189,13 +189,71 @@ textarea::placeholder {
   align-items: center;
 }
 
-.branch-output .branch-text {
-  color: var(--accent);
+.keywords {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  margin: 0 0 0.9rem;
+  line-height: 1.8;
 }
 
-.branch-output.is-empty .branch-text {
+.keyword-chip {
+  display: inline-block;
+  color: var(--amber);
+  background: rgba(232, 163, 61, 0.1);
+  border: 1px solid var(--border);
+  padding: 0.05rem 0.4rem;
+  margin: 0 0.3rem 0.3rem 0;
+  font-size: 0.78rem;
+}
+
+.suggestion-list {
+  list-style: none;
+  margin: 0 0 0.9rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.suggestion-empty {
   color: var(--text-dim);
   font-style: italic;
+  font-size: 0.9rem;
+}
+
+.suggestion {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border-bright);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.92rem;
+  text-align: left;
+  padding: 0.65rem 0.75rem;
+  cursor: pointer;
+  word-break: break-all;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.suggestion:hover {
+  border-color: var(--accent);
+}
+
+.suggestion.is-selected {
+  border-color: var(--accent);
+  background: rgba(124, 227, 139, 0.08);
+}
+
+.suggestion-marker {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.suggestion-text {
+  color: var(--accent);
 }
 
 .copy-button {
@@ -223,36 +281,6 @@ textarea::placeholder {
   color: var(--text-dim);
   border-color: var(--border);
   cursor: not-allowed;
-}
-
-.breakdown ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.breakdown li {
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
-  font-size: 0.85rem;
-  flex-wrap: wrap;
-}
-
-.chip-from {
-  color: var(--text-dim);
-}
-
-.arrow {
-  color: var(--border-bright);
-}
-
-.chip-to {
-  color: var(--amber);
-  font-weight: 600;
 }
 
 .masthead-footer {

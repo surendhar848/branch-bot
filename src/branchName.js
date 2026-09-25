@@ -1,47 +1,89 @@
 const STOPWORDS = new Set([
-  'a', 'an', 'the', 'of', 'for', 'and', 'to', 'in', 'on', 'with', 'from', 'or', 'vs', 'via',
+  'a', 'an', 'the', 'of', 'for', 'and', 'to', 'in', 'on', 'with', 'from',
+  'or', 'vs', 'via', 'is', 'are', 'be', 'as', 'by', 'this', 'that', 'it',
 ])
+
+// Common ticket vocabulary written as a noun ("Removal", "Enhancement")
+// collapses to the shorter verb a developer would actually type in a
+// branch name ("remove", "enhance").
+const NORMALIZE = {
+  removal: 'remove',
+  deletion: 'delete',
+  creation: 'create',
+  addition: 'add',
+  enhancement: 'enhance',
+  modification: 'modify',
+  tokenization: 'tokenize',
+  implementation: 'implement',
+  migration: 'migrate',
+  integration: 'integrate',
+  configuration: 'configure',
+  validation: 'validate',
+  optimization: 'optimize',
+  correction: 'correct',
+  generation: 'generate',
+  cancellation: 'cancel',
+  verification: 'verify',
+  registration: 'register',
+  authentication: 'auth',
+  authorization: 'authorize',
+  restoration: 'restore',
+  replacement: 'replace',
+  extension: 'extend',
+  reduction: 'reduce',
+  expansion: 'expand',
+  activation: 'activate',
+  deactivation: 'deactivate',
+  automation: 'automate',
+  updation: 'update',
+}
 
 function sanitizeWord(word) {
   return word.replace(/[^a-zA-Z0-9]/g, '')
 }
 
-function significantWords(segment) {
-  return segment
-    .split(/\s+/)
-    .map(sanitizeWord)
-    .filter(Boolean)
-    .filter((word) => word.length > 2 && !STOPWORDS.has(word.toLowerCase()))
+// A leading "Type: ..." label (Enhancement:, Bug:, Story:, ...) is ticket
+// metadata, not part of the change itself, so it's dropped before extracting
+// keywords.
+function stripTypeLabel(task) {
+  const colonIndex = task.indexOf(':')
+  return colonIndex === -1 ? task : task.slice(colonIndex + 1)
 }
 
-// Short, deterministic abbreviation for one "-"-delimited chunk of the task
-// description. Exactly two significant words combine as a 4-char lead word
-// plus a 3-char second word (e.g. "Tata Capital" -> "TataCap"); any other
-// word count just truncates the leading word to 5 chars (e.g. "Tokenized
-// Link Creation" -> "Token"), keeping every segment short and skimmable.
-function abbreviateSegment(segment) {
-  const words = significantWords(segment)
-  if (words.length === 0) return ''
-  if (words.length === 2) return words[0].slice(0, 4) + words[1].slice(0, 3)
-  return words[0].slice(0, 5)
+export function extractKeywords(task) {
+  return stripTypeLabel(task || '')
+    .split(/[^a-zA-Z0-9]+/)
+    .map((word) => word.toLowerCase())
+    .filter((word) => word.length > 2 && !STOPWORDS.has(word))
+    .map((word) => NORMALIZE[word] || word)
 }
 
-export function getSegmentBreakdown(task) {
-  return (task || '')
-    .split(/\s*-\s*/)
-    .map((segment) => segment.trim())
-    .filter(Boolean)
-    .map((segment) => ({ segment, abbreviation: abbreviateSegment(segment) }))
-    .filter((entry) => entry.abbreviation)
-}
+// Three ranked candidates - the same keywords at increasing lengths - so
+// picking a branch name is a choice between "short" and "more descriptive"
+// rather than a single take-it-or-leave-it guess.
+const CANDIDATE_LENGTHS = [2, 3, 4]
 
-export function generateBranchName({ username, cardNumber, task }) {
+export function getBranchSuggestions({ username, cardNumber, task }) {
   const cleanUsername = sanitizeWord(username || '').toLowerCase() || 'dev'
   const cleanCard = String(cardNumber || '').replace(/[^a-zA-Z0-9]/g, '')
-  const suffix = getSegmentBreakdown(task)
-    .map((entry) => entry.abbreviation)
-    .join('-')
+  const keywords = extractKeywords(task)
 
-  const tail = [cleanCard, suffix].filter(Boolean).join('-')
-  return tail ? `${cleanUsername}/${tail}` : `${cleanUsername}/`
+  const suffixes = []
+  const seen = new Set()
+  for (const length of CANDIDATE_LENGTHS) {
+    if (keywords.length === 0) break
+    const suffix = keywords.slice(0, Math.min(length, keywords.length)).join('-')
+    if (seen.has(suffix)) continue
+    seen.add(suffix)
+    suffixes.push(suffix)
+  }
+
+  if (suffixes.length === 0) {
+    return [cleanCard ? `${cleanUsername}/${cleanCard}` : `${cleanUsername}/`]
+  }
+
+  return suffixes.map((suffix) => {
+    const tail = [cleanCard, suffix].filter(Boolean).join('-')
+    return `${cleanUsername}/${tail}`
+  })
 }
